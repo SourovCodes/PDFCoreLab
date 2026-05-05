@@ -42,16 +42,20 @@ class PdfCompressionController extends Controller
     {
         $apiKey = $this->apiKey($request);
 
+        $sourceDisk = config('pdf-compression.source_disk', 'local');
+        $sourceDirectory = config('pdf-compression.source_directory', 'pdf-compressions/originals');
+
         $pdfCompression = PdfCompression::create([
             'api_key_id' => $apiKey->id,
             'user_id' => $apiKey->user_id,
             'original_filename' => $request->file('pdf')->getClientOriginalName(),
-            'original_path' => $request->file('pdf')->store('pdfs/original', 'local'),
-            'original_disk' => 'local',
+            'original_path' => $request->file('pdf')->store($sourceDirectory, $sourceDisk),
+            'original_disk' => $sourceDisk,
             'original_mime_type' => $request->file('pdf')->getClientMimeType(),
             'original_size_bytes' => $request->file('pdf')->getSize(),
             'status' => PdfCompressionStatus::Queued,
             'ghostscript_preset' => $request->validated('preset'),
+            'queued_at' => now(),
         ]);
         CompressPdfCompressionJob::dispatch($pdfCompression);
 

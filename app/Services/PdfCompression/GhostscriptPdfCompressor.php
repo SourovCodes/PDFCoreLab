@@ -3,6 +3,7 @@
 namespace App\Services\PdfCompression;
 
 use App\Models\PdfCompression;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;
@@ -53,6 +54,13 @@ class GhostscriptPdfCompressor
         if (! is_int($compressedSize) || $compressedSize <= 0) {
             throw new RuntimeException('The compressed PDF is empty.');
         }
+
+        Log::debug('Ghostscript compression finished', [
+            'public_id' => $pdfCompression->public_id,
+            'input_size' => $pdfCompression->original_size_bytes,
+            'output_size' => $compressedSize,
+            'preset' => $pdfCompression->ghostscript_preset->value,
+        ]);
 
         return new CompressionResult(
             disk: $outputDiskName,

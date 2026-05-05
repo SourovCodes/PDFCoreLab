@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -39,6 +40,12 @@ class CompressPdfCompressionJob implements ShouldQueue
             return;
         }
 
+        Log::info('Starting PDF compression', [
+            'public_id' => $this->pdfCompression->public_id,
+            'original_size' => $this->pdfCompression->original_size_bytes,
+            'preset' => $this->pdfCompression->ghostscript_preset->value,
+        ]);
+
         $this->pdfCompression->forceFill([
             'status' => PdfCompressionStatus::Processing,
             'processing_started_at' => now(),
@@ -57,6 +64,13 @@ class CompressPdfCompressionJob implements ShouldQueue
             'failed_at' => null,
             'failure_message' => null,
         ])->save();
+
+        Log::info('PDF compression completed', [
+            'public_id' => $this->pdfCompression->public_id,
+            'original_size' => $this->pdfCompression->original_size_bytes,
+            'compressed_size' => $result->sizeInBytes,
+            'reduction_percent' => round((1 - $result->sizeInBytes / $this->pdfCompression->original_size_bytes) * 100, 1),
+        ]);
     }
 
     public function failed(?Throwable $exception): void
@@ -66,6 +80,11 @@ class CompressPdfCompressionJob implements ShouldQueue
         }
 
         $this->pdfCompression->refresh();
+
+        Log::error('PDF compression failed', [
+            'public_id' => $this->pdfCompression->public_id,
+            'error' => $exception?->getMessage(),
+        ]);
 
         $this->pdfCompression->forceFill([
             'status' => PdfCompressionStatus::Failed,

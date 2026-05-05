@@ -31,9 +31,9 @@ class EnsureValidApiKey
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $apiKey->forceFill([
-            'last_used_at' => now(),
-        ])->saveQuietly();
+        if ($apiKey->last_used_at === null || $apiKey->last_used_at->diffInSeconds(now()) > 60) {
+            $apiKey->forceFill(['last_used_at' => now()])->saveQuietly();
+        }
 
         $request->attributes->set('apiKey', $apiKey);
 

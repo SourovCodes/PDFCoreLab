@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Resources\Api\v1;
+namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class PdfCompressionResource extends JsonResource
 {
@@ -34,12 +34,15 @@ class PdfCompressionResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'links' => [
-                'original' => Storage::disk($this->original_disk)->temporaryUrl($this->original_path, $expiresAt),
+                'original' => URL::signedRoute('api.v1.pdf-compressions.download.original', [
+                    'pdfCompression' => $this->public_id,
+                ], $expiresAt),
                 'compressed' => ($this->compressed_disk !== null && $this->compressed_path !== null)
-                    ? Storage::disk($this->compressed_disk)->temporaryUrl($this->compressed_path, $expiresAt)
+                    ? URL::signedRoute('api.v1.pdf-compressions.download.compressed', [
+                        'pdfCompression' => $this->public_id,
+                    ], $expiresAt)
                     : null,
             ],
-
         ];
     }
 }

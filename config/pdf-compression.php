@@ -14,4 +14,6 @@ return [
     'max_upload_size_kb' => (int) env('PDF_COMPRESSION_MAX_UPLOAD_SIZE_KB', 51200),
 
     'process_timeout_seconds' => (int) env('PDF_COMPRESSION_PROCESS_TIMEOUT_SECONDS', 300),
+
+    'retention_days' => (int) env('PDF_COMPRESSION_RETENTION_DAYS', 7),
 ];
