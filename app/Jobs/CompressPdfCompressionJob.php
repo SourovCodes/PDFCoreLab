@@ -1,0 +1,76 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Enums\PdfCompressionStatus;
+use App\Models\PdfCompression;
+use App\Services\PdfCompression\GhostscriptPdfCompressor;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
+use Throwable;
+
+class CompressPdfCompressionJob implements ShouldQueue
+{
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    public bool $deleteWhenMissingModels = true;
+
+    public int $tries = 3;
+
+    public int $timeout = 300;
+
+    public function __construct(public PdfCompression $pdfCompression) {}
+
+    public function backoff(): array
+    {
+        return [5, 30, 120];
+    }
+
+    public function handle(GhostscriptPdfCompressor $compressor): void
+    {
+        $this->pdfCompression->refresh();
+
+        if ($this->pdfCompression->status === PdfCompressionStatus::Completed) {
+            return;
+        }
+
+        $this->pdfCompression->forceFill([
+            'status' => PdfCompressionStatus::Processing,
+            'processing_started_at' => now(),
+            'failed_at' => null,
+            'failure_message' => null,
+        ])->save();
+
+        $result = $compressor->compress($this->pdfCompression);
+
+        $this->pdfCompression->forceFill([
+            'status' => PdfCompressionStatus::Completed,
+            'compressed_disk' => $result->disk,
+            'compressed_path' => $result->path,
+            'compressed_size_bytes' => $result->sizeInBytes,
+            'processed_at' => now(),
+            'failed_at' => null,
+            'failure_message' => null,
+        ])->save();
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        if (! $this->pdfCompression->exists) {
+            return;
+        }
+
+        $this->pdfCompression->refresh();
+
+        $this->pdfCompression->forceFill([
+            'status' => PdfCompressionStatus::Failed,
+            'failed_at' => now(),
+            'failure_message' => $exception === null ? 'PDF compression failed.' : Str::limit($exception->getMessage(), 2000),
+        ])->save();
+    }
+}
