@@ -49,7 +49,7 @@ Route::middleware('auth')->group(function (): void {
 
         Route::get('api-keys', [ApiKeyController::class, 'index'])->name('dashboard.api-keys.index');
         Route::post('api-keys', [ApiKeyController::class, 'store'])->name('dashboard.api-keys.store');
-        Route::delete('api-keys/{apiKey}', [ApiKeyController::class, 'destroy'])->name('dashboard.api-keys.destroy');
+        Route::patch('api-keys/{apiKey}/toggle', [ApiKeyController::class, 'toggle'])->name('dashboard.api-keys.toggle');
 
         Route::get('compressions', [PdfCompressionController::class, 'index'])->name('dashboard.compressions.index');
     });

@@ -38,15 +38,17 @@ class ApiKeyController extends Controller
             ->with('success', 'API key created successfully. Copy it now — it won\'t be shown again.');
     }
 
-    public function destroy(Request $request, ApiKey $apiKey): RedirectResponse
+    public function toggle(Request $request, ApiKey $apiKey): RedirectResponse
     {
         if ($apiKey->user_id !== $request->user()->id) {
             abort(403);
         }
 
-        $apiKey->delete();
+        $apiKey->update(['is_active' => ! $apiKey->is_active]);
+
+        $status = $apiKey->is_active ? 'activated' : 'deactivated';
 
         return redirect()->route('dashboard.api-keys.index')
-            ->with('success', 'API key deleted successfully.');
+            ->with('success', "API key {$status} successfully.");
     }
 }

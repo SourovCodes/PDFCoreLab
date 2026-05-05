@@ -77,13 +77,18 @@
                                             @endif
                                         </td>
                                         <td class="py-3 text-right">
-                                            <form method="POST" action="{{ route('dashboard.api-keys.destroy', $key) }}"
-                                                  onsubmit="return confirm('Are you sure you want to delete this API key? This action cannot be undone.')">
+                                            <form method="POST" action="{{ route('dashboard.api-keys.toggle', $key) }}">
                                                 @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline underline-offset-4">
-                                                    Delete
-                                                </button>
+                                                @method('PATCH')
+                                                @if($key->is_active)
+                                                    <button type="submit" class="text-xs text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300 underline underline-offset-4">
+                                                        Deactivate
+                                                    </button>
+                                                @else
+                                                    <button type="submit" class="text-xs text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 underline underline-offset-4">
+                                                        Activate
+                                                    </button>
+                                                @endif
                                             </form>
                                         </td>
                                     </tr>
