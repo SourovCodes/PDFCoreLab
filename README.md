@@ -1,58 +1,162 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PDFCoreLab API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+PDFCoreLab is an asynchronous PDF compression API built with Laravel and Ghostscript. Upload a PDF, choose a compression preset, receive a queued job immediately, and poll the API for status and signed download links.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Asynchronous PDF compression with queued jobs.
+- Five Ghostscript presets: `screen`, `ebook`, `printer`, `prepress`, and `default`.
+- API-key authentication for protected endpoints.
+- Signed download URLs for original and compressed files.
+- OpenAPI 3.1 spec with a Swagger UI endpoint.
+- Retention cleanup command for completed and failed jobs.
+- Pest feature tests covering the main API flow.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.4
+- Laravel 13
+- MySQL
+- Queue workers backed by the database driver
+- Vite and Tailwind CSS 4 for the landing page and docs UI shell
+- Ghostscript for the actual PDF compression step
 
-## Learning Laravel
+## API Surface
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Authentication
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Protected endpoints accept either:
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- `X-API-Key: your-api-key`
+- `Authorization: Bearer your-api-key`
 
-## Agentic Development
+### Endpoints
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- `GET /api/v1/pdf-compressions`
+- `POST /api/v1/pdf-compressions`
+- `GET /api/v1/pdf-compressions/{public_id}`
+- `GET /api/v1/pdf-compressions/{public_id}/download/original` via signed URL
+- `GET /api/v1/pdf-compressions/{public_id}/download/compressed` via signed URL
+- `GET /api/v1/docs`
+- `GET /api/v1/docs/openapi.json`
+
+### Example Request
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+curl -X POST http://localhost:8000/api/v1/pdf-compressions \
+	-H "X-API-Key: your-api-key" \
+	-F "pdf=@document.pdf" \
+	-F "preset=ebook"
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+The API returns `202 Accepted` and a resource payload containing the compression status and time-limited download links.
+
+## Local Setup
+
+### Requirements
+
+- PHP 8.4+
+- Composer
+- Node.js 20+
+- MySQL
+- Ghostscript
+
+On macOS you can install Ghostscript with:
+
+```bash
+brew install ghostscript
+```
+
+### Installation
+
+```bash
+git clone https://github.com/SourovCodes/PDFCoreLab-api.git
+cd PDFCoreLab-api
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+```
+
+### Development
+
+Run the full local development stack:
+
+```bash
+composer dev
+```
+
+That starts:
+
+- the Laravel HTTP server
+- the queue listener
+- application log streaming
+- the Vite development server
+
+If you prefer to run pieces separately:
+
+```bash
+php artisan serve
+php artisan queue:listen --tries=1 --timeout=0
+npm run dev
+```
+
+## Configuration
+
+The main PDF compression settings are exposed through environment variables:
+
+```dotenv
+GHOSTSCRIPT_BINARY=gs
+PDF_COMPRESSION_SOURCE_DISK=local
+PDF_COMPRESSION_OUTPUT_DISK=local
+PDF_COMPRESSION_SOURCE_DIRECTORY=pdf-compressions/originals
+PDF_COMPRESSION_OUTPUT_DIRECTORY=pdf-compressions/compressed
+PDF_COMPRESSION_MAX_UPLOAD_SIZE_KB=51200
+PDF_COMPRESSION_PROCESS_TIMEOUT_SECONDS=300
+PDF_COMPRESSION_RETENTION_DAYS=7
+```
+
+## Maintenance
+
+Delete old completed and failed compression jobs with:
+
+```bash
+php artisan pdf:cleanup
+```
+
+Override the retention window if needed:
+
+```bash
+php artisan pdf:cleanup --days=14
+```
+
+## Testing
+
+Run the test suite with:
+
+```bash
+php artisan test --compact
+```
+
+## OpenAPI Docs
+
+When the app is running locally, the interactive API docs are available at:
+
+- `http://localhost:8000/api/v1/docs`
+
+The raw OpenAPI document is available at:
+
+- `http://localhost:8000/api/v1/docs/openapi.json`
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
-## Code of Conduct
+## Security
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Please read [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is licensed under the [MIT License](LICENSE).

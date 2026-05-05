@@ -1,13 +1,25 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "sourovcodes/pdfcorelab-api",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Asynchronous PDF compression API for Laravel powered by Ghostscript.",
     "keywords": [
         "laravel",
-        "framework"
+        "pdf",
+        "compression",
+        "ghostscript",
+        "api"
     ],
     "license": "MIT",
+    "homepage": "https://github.com/SourovCodes/PDFCoreLab-api",
+    "support": {
+        "issues": "https://github.com/SourovCodes/PDFCoreLab-api/issues",
+        "source": "https://github.com/SourovCodes/PDFCoreLab-api"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/SourovCodes/PDFCoreLab-api.git"
+    },
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.0",
