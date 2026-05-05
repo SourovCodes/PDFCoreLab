@@ -232,3 +232,25 @@ test('cleanup command outputs message when nothing to clean', function () {
         ->expectsOutput('No old PDF compressions to clean up.')
         ->assertSuccessful();
 });
+
+// ─── API Documentation ───
+
+test('docs ui returns html page', function () {
+    $this->get('/api/v1/docs')
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'text/html; charset=UTF-8')
+        ->assertSee('swagger-ui');
+});
+
+test('docs spec returns valid openapi json', function () {
+    $response = $this->get('/api/v1/docs/openapi.json')
+        ->assertSuccessful()
+        ->assertHeader('content-type', 'application/json');
+
+    $json = $response->json();
+
+    expect($json)->toHaveKey('openapi')
+        ->and($json['openapi'])->toBe('3.1.0')
+        ->and($json)->toHaveKey('paths')
+        ->and($json['paths'])->toHaveKey('/pdf-compressions');
+});

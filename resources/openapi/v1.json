@@ -1,0 +1,499 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "PDFCoreLab API",
+        "description": "PDF compression API powered by Ghostscript. Upload PDFs, compress them with configurable quality presets, and download the results.\n\n## Authentication\n\nAll endpoints under **PDF Compressions** require an API key. Provide it using one of:\n\n- `X-API-Key` request header\n- `Authorization: Bearer <key>` header\n\n**Download** endpoints use signed URLs instead — the links returned in compression resources are pre-signed and expire after 10 minutes.\n\n## Rate Limiting\n\nAuthenticated endpoints are rate-limited to **60 requests per minute** per API key. When the limit is exceeded a `429 Too Many Requests` response is returned.",
+        "version": "1.0.0",
+        "contact": {
+            "name": "PDFCoreLab"
+        }
+    },
+    "servers": [
+        {
+            "url": "/api/v1",
+            "description": "API v1"
+        }
+    ],
+    "security": [
+        { "ApiKeyHeader": [] },
+        { "BearerToken": [] }
+    ],
+    "tags": [
+        {
+            "name": "PDF Compressions",
+            "description": "Create, list, and inspect PDF compression jobs."
+        },
+        {
+            "name": "Downloads",
+            "description": "Download original and compressed PDF files via time-limited signed URLs."
+        }
+    ],
+    "paths": {
+        "/pdf-compressions": {
+            "get": {
+                "operationId": "listPdfCompressions",
+                "summary": "List PDF compressions",
+                "description": "Returns a paginated list of PDF compression jobs belonging to the authenticated API key.",
+                "tags": ["PDF Compressions"],
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by compression status.",
+                        "schema": { "$ref": "#/components/schemas/PdfCompressionStatus" }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Number of results per page (1–100). Defaults to 15.",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Page number.",
+                        "schema": { "type": "integer", "minimum": 1, "default": 1 }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of PDF compressions.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": { "$ref": "#/components/schemas/PdfCompression" }
+                                        },
+                                        "links": { "$ref": "#/components/schemas/PaginationLinks" },
+                                        "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "422": { "$ref": "#/components/responses/ValidationError" },
+                    "429": { "$ref": "#/components/responses/TooManyRequests" }
+                }
+            },
+            "post": {
+                "operationId": "createPdfCompression",
+                "summary": "Upload a PDF for compression",
+                "description": "Uploads a PDF file and queues it for compression using the specified Ghostscript preset. Returns immediately with a `202 Accepted` status while processing happens asynchronously.",
+                "tags": ["PDF Compressions"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["pdf", "preset"],
+                                "properties": {
+                                    "pdf": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "The PDF file to compress. Maximum size: 50 MB."
+                                    },
+                                    "preset": {
+                                        "$ref": "#/components/schemas/GhostscriptPreset"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "PDF accepted and queued for compression.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": { "$ref": "#/components/schemas/PdfCompression" },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "PDF queued for compression."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "422": { "$ref": "#/components/responses/ValidationError" },
+                    "429": { "$ref": "#/components/responses/TooManyRequests" }
+                }
+            }
+        },
+        "/pdf-compressions/{public_id}": {
+            "get": {
+                "operationId": "showPdfCompression",
+                "summary": "Get a PDF compression",
+                "description": "Returns the details of a single PDF compression job. Only accessible if the job belongs to the authenticated API key; otherwise returns `404`.",
+                "tags": ["PDF Compressions"],
+                "parameters": [
+                    {
+                        "name": "public_id",
+                        "in": "path",
+                        "required": true,
+                        "description": "The ULID public identifier of the PDF compression.",
+                        "schema": { "type": "string", "example": "01J5K9H3X2MFBR7YZQWC4DNTGE" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PDF compression details.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": { "$ref": "#/components/schemas/PdfCompression" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" },
+                    "429": { "$ref": "#/components/responses/TooManyRequests" }
+                }
+            }
+        },
+        "/pdf-compressions/{public_id}/download/original": {
+            "get": {
+                "operationId": "downloadOriginalPdf",
+                "summary": "Download the original PDF",
+                "description": "Downloads the original uploaded PDF file. Requires a valid signed URL (provided in the `links.original` field of the compression resource). No API key needed — the URL signature authenticates the request.",
+                "tags": ["Downloads"],
+                "security": [],
+                "parameters": [
+                    {
+                        "name": "public_id",
+                        "in": "path",
+                        "required": true,
+                        "description": "The ULID public identifier of the PDF compression.",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "signature",
+                        "in": "query",
+                        "required": true,
+                        "description": "Signed URL signature (included automatically in links returned by the API).",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "expires",
+                        "in": "query",
+                        "required": true,
+                        "description": "Signature expiration timestamp.",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The original PDF file.",
+                        "content": {
+                            "application/pdf": {
+                                "schema": { "type": "string", "format": "binary" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid or expired signature.",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Error" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/pdf-compressions/{public_id}/download/compressed": {
+            "get": {
+                "operationId": "downloadCompressedPdf",
+                "summary": "Download the compressed PDF",
+                "description": "Downloads the compressed PDF file. Requires a valid signed URL (provided in the `links.compressed` field of the compression resource). Only available after compression has completed successfully.",
+                "tags": ["Downloads"],
+                "security": [],
+                "parameters": [
+                    {
+                        "name": "public_id",
+                        "in": "path",
+                        "required": true,
+                        "description": "The ULID public identifier of the PDF compression.",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "signature",
+                        "in": "query",
+                        "required": true,
+                        "description": "Signed URL signature (included automatically in links returned by the API).",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "expires",
+                        "in": "query",
+                        "required": true,
+                        "description": "Signature expiration timestamp.",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The compressed PDF file.",
+                        "content": {
+                            "application/pdf": {
+                                "schema": { "type": "string", "format": "binary" }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid or expired signature.",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/Error" }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "ApiKeyHeader": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-Key",
+                "description": "API key passed via the `X-API-Key` request header."
+            },
+            "BearerToken": {
+                "type": "http",
+                "scheme": "bearer",
+                "description": "API key passed as a Bearer token in the `Authorization` header."
+            }
+        },
+        "schemas": {
+            "PdfCompression": {
+                "type": "object",
+                "properties": {
+                    "public_id": {
+                        "type": "string",
+                        "description": "ULID identifier for the compression job.",
+                        "example": "01J5K9H3X2MFBR7YZQWC4DNTGE"
+                    },
+                    "status": { "$ref": "#/components/schemas/PdfCompressionStatus" },
+                    "ghostscript_preset": { "$ref": "#/components/schemas/GhostscriptPreset" },
+                    "original_filename": {
+                        "type": "string",
+                        "description": "Original uploaded filename.",
+                        "example": "report.pdf"
+                    },
+                    "original_mime_type": {
+                        "type": "string",
+                        "description": "MIME type of the uploaded file.",
+                        "example": "application/pdf"
+                    },
+                    "original_size_bytes": {
+                        "type": "integer",
+                        "description": "Size of the original file in bytes.",
+                        "example": 2500000
+                    },
+                    "compressed_size_bytes": {
+                        "type": ["integer", "null"],
+                        "description": "Size of the compressed file in bytes. Null until compression completes.",
+                        "example": 980000
+                    },
+                    "has_compressed_file": {
+                        "type": "boolean",
+                        "description": "Whether a compressed file is available for download."
+                    },
+                    "failure_message": {
+                        "type": ["string", "null"],
+                        "description": "Error message if compression failed.",
+                        "example": null
+                    },
+                    "queued_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time",
+                        "description": "When the job was queued."
+                    },
+                    "processing_started_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time",
+                        "description": "When Ghostscript compression started."
+                    },
+                    "processed_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time",
+                        "description": "When compression completed successfully."
+                    },
+                    "failed_at": {
+                        "type": ["string", "null"],
+                        "format": "date-time",
+                        "description": "When compression failed."
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "links": {
+                        "type": "object",
+                        "description": "Time-limited signed download URLs (expire after 10 minutes).",
+                        "properties": {
+                            "original": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "Signed URL to download the original PDF."
+                            },
+                            "compressed": {
+                                "type": ["string", "null"],
+                                "format": "uri",
+                                "description": "Signed URL to download the compressed PDF. Null if not yet available."
+                            }
+                        }
+                    }
+                }
+            },
+            "GhostscriptPreset": {
+                "type": "string",
+                "enum": ["screen", "ebook", "printer", "prepress", "default"],
+                "description": "Ghostscript compression quality preset.\n\n| Preset | DPI | Use case |\n|--------|-----|----------|\n| `screen` | 72 | Smallest file — screen viewing only |\n| `ebook` | 150 | Good balance for digital distribution |\n| `printer` | 300 | High quality for printing |\n| `prepress` | 300+ | Maximum quality for professional prepress |\n| `default` | — | Ghostscript default settings |"
+            },
+            "PdfCompressionStatus": {
+                "type": "string",
+                "enum": ["queued", "processing", "completed", "failed"],
+                "description": "Current status of the compression job."
+            },
+            "Error": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Human-readable error message."
+                    }
+                }
+            },
+            "ValidationError": {
+                "type": "object",
+                "required": ["message", "errors"],
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "The PDF file field is required."
+                    },
+                    "errors": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        },
+                        "example": {
+                            "pdf": ["The PDF file field is required."],
+                            "preset": ["The Ghostscript preset field is required."]
+                        }
+                    }
+                }
+            },
+            "PaginationLinks": {
+                "type": "object",
+                "properties": {
+                    "first": { "type": "string", "format": "uri" },
+                    "last": { "type": "string", "format": "uri" },
+                    "prev": { "type": ["string", "null"], "format": "uri" },
+                    "next": { "type": ["string", "null"], "format": "uri" }
+                }
+            },
+            "PaginationMeta": {
+                "type": "object",
+                "properties": {
+                    "current_page": { "type": "integer", "example": 1 },
+                    "from": { "type": ["integer", "null"], "example": 1 },
+                    "last_page": { "type": "integer", "example": 3 },
+                    "path": { "type": "string", "format": "uri" },
+                    "per_page": { "type": "integer", "example": 15 },
+                    "to": { "type": ["integer", "null"], "example": 15 },
+                    "total": { "type": "integer", "example": 42 },
+                    "links": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "url": { "type": ["string", "null"] },
+                                "label": { "type": "string" },
+                                "active": { "type": "boolean" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "responses": {
+            "Unauthorized": {
+                "description": "Missing or invalid API key.",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" },
+                        "examples": {
+                            "missing": {
+                                "summary": "No API key provided",
+                                "value": { "message": "A valid API key must be provided via the X-API-Key header or Bearer token." }
+                            },
+                            "invalid": {
+                                "summary": "Invalid API key",
+                                "value": { "message": "The supplied API key is invalid." }
+                            }
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Resource not found.",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" },
+                        "example": { "message": "Not Found" }
+                    }
+                }
+            },
+            "ValidationError": {
+                "description": "Validation failed.",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/ValidationError" }
+                    }
+                }
+            },
+            "TooManyRequests": {
+                "description": "Rate limit exceeded (60 requests per minute per API key).",
+                "content": {
+                    "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Error" },
+                        "example": { "message": "Too Many Attempts." }
+                    }
+                }
+            }
+        }
+    }
+}

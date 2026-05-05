@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ApiDocumentationController;
 use App\Http\Controllers\Api\V1\PdfCompressionController;
 use App\Http\Controllers\Api\V1\PdfCompressionDownloadController;
 use Illuminate\Support\Facades\Route;
@@ -21,4 +22,11 @@ Route::prefix('v1')
 
         Route::get('pdf-compressions/{pdfCompression}/download/compressed', [PdfCompressionDownloadController::class, 'compressed'])
             ->name('pdf-compressions.download.compressed');
+    });
+
+Route::prefix('v1/docs')
+    ->name('api.v1.docs.')
+    ->group(function (): void {
+        Route::get('/', [ApiDocumentationController::class, 'ui'])->name('ui');
+        Route::get('/openapi.json', [ApiDocumentationController::class, 'spec'])->name('spec');
     });
