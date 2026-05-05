@@ -131,6 +131,60 @@ Override the retention window if needed:
 php artisan pdf:cleanup --days=14
 ```
 
+## Deployment
+
+This repository is configured for automatic production deployments with Deployer and GitHub Actions.
+
+### What happens on push
+
+Every push to `main` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml), which:
+
+- connects to your server over SSH
+- updates the code with Deployer
+- installs production Composer dependencies
+- runs `npm ci` and `npm run build` on the server
+- runs Laravel migrations
+- refreshes optimized caches
+- restarts queue workers
+
+### Files
+
+- `deploy.php` contains the Deployer recipe
+- `.github/workflows/deploy.yml` runs the deploy automatically on pushes to `main`
+
+### Required GitHub Secrets
+
+Add these repository or environment secrets before enabling production deploys:
+
+- `DEPLOY_HOST`: server hostname or IP
+- `DEPLOY_USER`: SSH user used for deployment
+- `DEPLOY_PATH`: absolute deployment path on the server
+- `DEPLOY_SSH_PRIVATE_KEY`: private key for the deploy user
+- `DEPLOY_PORT`: optional SSH port, defaults to `22`
+- `DEPLOY_PHP_BINARY`: optional PHP binary name such as `php8.4`
+- `DEPLOY_ENV_FILE`: optional full production `.env` content used only if the shared `.env` file does not exist yet
+
+### Server Requirements
+
+Your target server needs:
+
+- PHP 8.4+
+- Composer
+- Node.js 20+
+- Ghostscript
+- a database configured for the application
+- a process manager for Laravel queue workers
+
+Make sure your web server points to the Deployer-managed `current/public` directory.
+
+### Manual Deploy
+
+You can still deploy manually from your machine with:
+
+```bash
+composer deploy
+```
+
 ## Testing
 
 Run the test suite with:
