@@ -15,5 +15,7 @@ return [
 
     'process_timeout_seconds' => (int) env('PDF_COMPRESSION_PROCESS_TIMEOUT_SECONDS', 300),
 
+    'sync_processing_threshold' => (int) env('PDF_COMPRESSION_SYNC_THRESHOLD', 10),
+
     'retention_days' => (int) env('PDF_COMPRESSION_RETENTION_DAYS', 7),
 ];

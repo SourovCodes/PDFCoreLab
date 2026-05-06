@@ -90,7 +90,7 @@
             "post": {
                 "operationId": "createPdfCompression",
                 "summary": "Upload a PDF for compression",
-                "description": "Uploads a PDF file and queues it for compression using the specified Ghostscript preset. Returns immediately with a `202 Accepted` status while processing happens asynchronously.",
+                "description": "Uploads a PDF file and compresses it using the specified Ghostscript preset. Under low load the PDF is processed synchronously and the response includes the completed compression with download links (`200 OK`). When the server is handling many concurrent compressions, the job is queued for asynchronous processing (`202 Accepted`).",
                 "tags": ["PDF Compressions"],
                 "requestBody": {
                     "required": true,
@@ -114,8 +114,25 @@
                     }
                 },
                 "responses": {
+                    "200": {
+                        "description": "PDF compressed successfully (synchronous processing). The response includes the completed compression with download links.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": { "$ref": "#/components/schemas/PdfCompression" },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "PDF compressed successfully."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "202": {
-                        "description": "PDF accepted and queued for compression.",
+                        "description": "PDF accepted and queued for asynchronous compression. Poll the show endpoint or use a webhook to check for completion.",
                         "content": {
                             "application/json": {
                                 "schema": {

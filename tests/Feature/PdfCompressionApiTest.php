@@ -6,7 +6,10 @@ use App\Jobs\CompressPdfCompressionJob;
 use App\Models\ApiKey;
 use App\Models\PdfCompression;
 use App\Models\User;
+use App\Services\PdfCompression\CompressionResult;
+use App\Services\PdfCompression\GhostscriptPdfCompressor;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
@@ -114,11 +117,47 @@ test('show returns 404 for compression belonging to another api key', function (
 
 // ─── Store ───
 
-test('store queues a pdf for compression', function () {
+test('store processes pdf synchronously when under threshold', function () {
+    Storage::fake('local');
+
+    $plainKey = 'test-store-sync-key';
+    $user = User::factory()->create();
+    ApiKey::factory()->withKnownKey($plainKey)->for($user)->create();
+
+    $this->mock(GhostscriptPdfCompressor::class)
+        ->shouldReceive('compress')
+        ->once()
+        ->andReturn(new CompressionResult(
+            disk: 'local',
+            path: 'pdf-compressions/compressed/test.pdf',
+            sizeInBytes: 512_000,
+        ));
+
+    $file = UploadedFile::fake()->create('document.pdf', 1024, 'application/pdf');
+
+    $this->postJson('/api/v1/pdf-compressions', [
+        'pdf' => $file,
+        'preset' => 'screen',
+    ], ['X-API-Key' => $plainKey])
+        ->assertOk()
+        ->assertJsonPath('data.status', 'completed')
+        ->assertJsonPath('message', 'PDF compressed successfully.');
+
+    $compression = PdfCompression::query()->sole();
+    expect($compression->status)->toBe(PdfCompressionStatus::Completed)
+        ->and($compression->compressed_size_bytes)->toBe(512_000)
+        ->and($compression->ghostscript_preset)->toBe(GhostscriptPreset::Screen);
+
+    expect(Cache::get('pdf-compression:sync-active', 0))->toBe(0);
+});
+
+test('store queues pdf when sync threshold is exceeded', function () {
     Queue::fake();
     Storage::fake('local');
 
-    $plainKey = 'test-store-key';
+    Cache::put('pdf-compression:sync-active', config('pdf-compression.sync_processing_threshold', 10));
+
+    $plainKey = 'test-store-queue-key';
     $user = User::factory()->create();
     ApiKey::factory()->withKnownKey($plainKey)->for($user)->create();
 
@@ -134,12 +173,43 @@ test('store queues a pdf for compression', function () {
 
     Queue::assertPushed(CompressPdfCompressionJob::class);
 
-    expect(PdfCompression::query()->count())->toBe(1);
-
-    $compression = PdfCompression::query()->first();
+    $compression = PdfCompression::query()->sole();
     expect($compression->status)->toBe(PdfCompressionStatus::Queued)
         ->and($compression->queued_at)->not->toBeNull()
         ->and($compression->ghostscript_preset)->toBe(GhostscriptPreset::Screen);
+});
+
+test('store falls back to queue when sync processing fails', function () {
+    Queue::fake();
+    Storage::fake('local');
+
+    $this->mock(GhostscriptPdfCompressor::class)
+        ->shouldReceive('compress')
+        ->once()
+        ->andThrow(new RuntimeException('Ghostscript process timed out.'));
+
+    $plainKey = 'test-store-fallback-key';
+    $user = User::factory()->create();
+    ApiKey::factory()->withKnownKey($plainKey)->for($user)->create();
+
+    $file = UploadedFile::fake()->create('document.pdf', 1024, 'application/pdf');
+
+    $this->postJson('/api/v1/pdf-compressions', [
+        'pdf' => $file,
+        'preset' => 'ebook',
+    ], ['X-API-Key' => $plainKey])
+        ->assertStatus(202)
+        ->assertJsonPath('data.status', 'queued')
+        ->assertJsonPath('message', 'PDF queued for compression.');
+
+    Queue::assertPushed(CompressPdfCompressionJob::class);
+
+    $compression = PdfCompression::query()->sole();
+    expect($compression->status)->toBe(PdfCompressionStatus::Queued)
+        ->and($compression->failure_message)->toBeNull()
+        ->and($compression->failed_at)->toBeNull();
+
+    expect(Cache::get('pdf-compression:sync-active', 0))->toBe(0);
 });
 
 test('store rejects non-pdf files', function () {
