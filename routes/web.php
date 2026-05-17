@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Dashboard\ApiKeyController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\PdfCompressionController;
+use App\Http\Controllers\Dashboard\WebhookDeliveryController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -53,5 +54,8 @@ Route::middleware('auth')->group(function (): void {
         Route::patch('api-keys/{apiKey}/webhook', [ApiKeyController::class, 'updateWebhook'])->name('dashboard.api-keys.webhook');
 
         Route::get('compressions', [PdfCompressionController::class, 'index'])->name('dashboard.compressions.index');
+
+        Route::get('webhook-deliveries', [WebhookDeliveryController::class, 'index'])->name('dashboard.webhook-deliveries.index');
+        Route::get('webhook-deliveries/{webhookDelivery}', [WebhookDeliveryController::class, 'show'])->name('dashboard.webhook-deliveries.show');
     });
 });

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -18,6 +19,8 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const MAX_API_KEYS = 10;
+
     public function apiKeys(): HasMany
     {
         return $this->hasMany(ApiKey::class);
@@ -26,6 +29,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function pdfCompressions(): HasMany
     {
         return $this->hasMany(PdfCompression::class);
+    }
+
+    public function webhookDeliveries(): HasManyThrough
+    {
+        return $this->hasManyThrough(WebhookDelivery::class, ApiKey::class);
     }
 
     /**

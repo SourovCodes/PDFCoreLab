@@ -19,9 +19,10 @@
                 </div>
                 <div class="rounded-lg border border-[#e3e3e0] dark:border-[#3E3E3A] bg-white dark:bg-[#161615] p-5">
                     <div class="text-sm text-[#706f6c] dark:text-[#A1A09A] mb-1">Quick Links</div>
-                    <div class="flex gap-3 mt-1">
+                    <div class="flex flex-wrap gap-3 mt-1">
                         <a href="{{ route('dashboard.api-keys.index') }}" class="text-sm text-[#f53003] underline underline-offset-4 hover:text-[#f53003]/80">API Keys</a>
                         <a href="{{ route('dashboard.compressions.index') }}" class="text-sm text-[#f53003] underline underline-offset-4 hover:text-[#f53003]/80">Compressions</a>
+                        <a href="{{ route('dashboard.webhook-deliveries.index') }}" class="text-sm text-[#f53003] underline underline-offset-4 hover:text-[#f53003]/80">Webhooks</a>
                     </div>
                 </div>
             </div>

@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
             $apiKey = $request->attributes->get('apiKey');
             $key = $apiKey?->id ?? $request->ip();
 
-            return Limit::perMinute(60)->by($key);
+            return Limit::perMinute(100)->by($key);
         });
     }
 }

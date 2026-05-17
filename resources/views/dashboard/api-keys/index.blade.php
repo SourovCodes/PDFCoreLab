@@ -5,8 +5,15 @@
 @section('content')
     <main class="flex-1 px-6 py-12 lg:py-16">
         <div class="max-w-4xl mx-auto">
+            @php
+                $keyCount = $apiKeys->total();
+                $maxKeys = \App\Models\User::MAX_API_KEYS;
+                $atLimit = $keyCount >= $maxKeys;
+            @endphp
+
             <div class="flex items-center justify-between mb-8">
                 <h1 class="text-2xl lg:text-3xl font-bold tracking-tight">API Keys</h1>
+                <span class="text-sm text-[#706f6c] dark:text-[#A1A09A]">{{ $keyCount }} / {{ $maxKeys }}</span>
             </div>
 
             {{-- New key flash --}}
@@ -29,20 +36,27 @@
             {{-- Create new key --}}
             <div class="rounded-lg border border-[#e3e3e0] dark:border-[#3E3E3A] bg-white dark:bg-[#161615] p-6 lg:p-8 mb-8">
                 <h2 class="font-semibold text-lg mb-4">Create New Key</h2>
-                <form method="POST" action="{{ route('dashboard.api-keys.store') }}" class="flex flex-col sm:flex-row gap-3">
-                    @csrf
-                    <div class="flex-1">
-                        <input type="text" name="name" placeholder="Key name (e.g. Production, Testing)" required
-                               class="w-full rounded-md border border-[#e3e3e0] dark:border-[#3E3E3A] bg-white dark:bg-[#0a0a0a] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#f53003]/50 focus:border-[#f53003]">
-                        @error('name')
-                            <p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <button type="submit"
-                            class="inline-flex items-center justify-center px-6 py-2 bg-[#1b1b18] dark:bg-[#EDEDEC] text-white dark:text-[#1b1b18] font-semibold rounded-md text-sm hover:bg-black dark:hover:bg-white transition">
-                        Create Key
-                    </button>
-                </form>
+
+                @if($atLimit)
+                    <p class="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                        You have reached the maximum of {{ $maxKeys }} API keys. Delete or deactivate an existing key before creating a new one.
+                    </p>
+                @else
+                    <form method="POST" action="{{ route('dashboard.api-keys.store') }}" class="flex flex-col sm:flex-row gap-3">
+                        @csrf
+                        <div class="flex-1">
+                            <input type="text" name="name" placeholder="Key name (e.g. Production, Testing)" required
+                                   class="w-full rounded-md border border-[#e3e3e0] dark:border-[#3E3E3A] bg-white dark:bg-[#0a0a0a] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#f53003]/50 focus:border-[#f53003]">
+                            @error('name')
+                                <p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <button type="submit"
+                                class="inline-flex items-center justify-center px-6 py-2 bg-[#1b1b18] dark:bg-[#EDEDEC] text-white dark:text-[#1b1b18] font-semibold rounded-md text-sm hover:bg-black dark:hover:bg-white transition">
+                            Create Key
+                        </button>
+                    </form>
+                @endif
             </div>
 
             {{-- Keys list --}}

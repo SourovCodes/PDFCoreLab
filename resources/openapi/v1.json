@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "PDFCoreLab API",
-        "description": "PDF compression API powered by Ghostscript. Upload PDFs, compress them with configurable quality presets, and download the results.\n\n## Authentication\n\nAll endpoints under **PDF Compressions** require an API key. Provide it using one of:\n\n- `X-API-Key` request header\n- `Authorization: Bearer <key>` header\n\n**Download** endpoints use signed URLs instead — the links returned in compression resources are pre-signed and expire after 10 minutes.\n\n## Rate Limiting\n\nAuthenticated endpoints are rate-limited to **60 requests per minute** per API key. When the limit is exceeded a `429 Too Many Requests` response is returned.\n\n## Webhooks\n\nWhen a request is queued for asynchronous processing (`202 Accepted`), PDFCoreLab can notify your server when the job finishes. Configure a webhook URL on your API key in the dashboard to receive `compression.completed` and `compression.failed` events. See the **Webhooks** section for the payload schema and signature verification.",
+        "description": "PDF compression API powered by Ghostscript. Upload PDFs, compress them with configurable quality presets, and download the results.\n\n## Authentication\n\nAll endpoints under **PDF Compressions** require an API key. Provide it using one of:\n\n- `X-API-Key` request header\n- `Authorization: Bearer <key>` header\n\n**Download** endpoints use signed URLs instead — the links returned in compression resources are pre-signed and expire after 10 minutes.\n\n## Rate Limiting\n\nAuthenticated endpoints are rate-limited to **100 requests per minute** per API key. When the limit is exceeded a `429 Too Many Requests` response is returned.\n\n## Webhooks\n\nWhen a request is queued for asynchronous processing (`202 Accepted`), PDFCoreLab can notify your server when the job finishes. Configure a webhook URL on your API key in the dashboard to receive `compression.completed` and `compression.failed` events. See the **Webhooks** section for the payload schema and signature verification.",
         "version": "1.0.0",
         "contact": {
             "name": "PDFCoreLab"
@@ -572,7 +572,7 @@
                 }
             },
             "TooManyRequests": {
-                "description": "Rate limit exceeded (60 requests per minute per API key).",
+                "description": "Rate limit exceeded (100 requests per minute per API key).",
                 "content": {
                     "application/json": {
                         "schema": { "$ref": "#/components/schemas/Error" },
