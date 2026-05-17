@@ -3,8 +3,10 @@
 namespace App\Jobs;
 
 use App\Enums\PdfCompressionStatus;
+use App\Enums\WebhookEvent;
 use App\Models\PdfCompression;
 use App\Services\PdfCompression\GhostscriptPdfCompressor;
+use App\Support\Webhooks\WebhookDispatcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -71,6 +73,12 @@ class CompressPdfCompressionJob implements ShouldQueue
             'compressed_size' => $result->sizeInBytes,
             'reduction_percent' => round((1 - $result->sizeInBytes / $this->pdfCompression->original_size_bytes) * 100, 1),
         ]);
+
+        app(WebhookDispatcher::class)->dispatch(
+            $this->pdfCompression->apiKey,
+            WebhookEvent::CompressionCompleted,
+            $this->pdfCompression,
+        );
     }
 
     public function failed(?Throwable $exception): void
@@ -91,5 +99,11 @@ class CompressPdfCompressionJob implements ShouldQueue
             'failed_at' => now(),
             'failure_message' => $exception === null ? 'PDF compression failed.' : Str::limit($exception->getMessage(), 2000),
         ])->save();
+
+        app(WebhookDispatcher::class)->dispatch(
+            $this->pdfCompression->apiKey,
+            WebhookEvent::CompressionFailed,
+            $this->pdfCompression,
+        );
     }
 }

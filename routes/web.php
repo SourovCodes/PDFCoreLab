@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function (): void {
         Route::get('api-keys', [ApiKeyController::class, 'index'])->name('dashboard.api-keys.index');
         Route::post('api-keys', [ApiKeyController::class, 'store'])->name('dashboard.api-keys.store');
         Route::patch('api-keys/{apiKey}/toggle', [ApiKeyController::class, 'toggle'])->name('dashboard.api-keys.toggle');
+        Route::patch('api-keys/{apiKey}/webhook', [ApiKeyController::class, 'updateWebhook'])->name('dashboard.api-keys.webhook');
 
         Route::get('compressions', [PdfCompressionController::class, 'index'])->name('dashboard.compressions.index');
     });

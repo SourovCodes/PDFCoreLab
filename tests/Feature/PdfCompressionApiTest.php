@@ -309,7 +309,8 @@ test('docs ui returns html page', function () {
     $this->get('/api/v1/docs')
         ->assertSuccessful()
         ->assertHeader('content-type', 'text/html; charset=UTF-8')
-        ->assertSee('swagger-ui');
+        ->assertSee('@scalar/api-reference', false)
+        ->assertSee('api-reference');
 });
 
 test('docs spec returns valid openapi json', function () {

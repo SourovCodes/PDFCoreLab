@@ -8,7 +8,8 @@ PDFCoreLab is an asynchronous PDF compression API built with Laravel and Ghostsc
 - Five Ghostscript presets: `screen`, `ebook`, `printer`, `prepress`, and `default`.
 - API-key authentication for protected endpoints.
 - Signed download URLs for original and compressed files.
-- OpenAPI 3.1 spec with a Swagger UI endpoint.
+- OpenAPI 3.1 spec rendered with [Scalar](https://scalar.com/).
+- Outbound webhooks for queued compressions (`compression.completed`, `compression.failed`) with HMAC-SHA256 signing.
 - Retention cleanup command for completed and failed jobs.
 - Pest feature tests covering the main API flow.
 
@@ -195,13 +196,42 @@ php artisan test --compact
 
 ## OpenAPI Docs
 
-When the app is running locally, the interactive API docs are available at:
+When the app is running locally, the interactive API docs are rendered with [Scalar](https://scalar.com/) at:
 
 - `http://localhost:8000/api/v1/docs`
 
-The raw OpenAPI document is available at:
+The raw OpenAPI document (3.1) is available at:
 
 - `http://localhost:8000/api/v1/docs/openapi.json`
+
+## Webhooks
+
+Each API key can have an optional webhook URL configured from the dashboard (`/dashboard/api-keys`). When a compression request is **queued** for asynchronous processing (`202 Accepted`), PDFCoreLab posts a signed JSON payload to that URL when the job finishes. Sync requests (`200 OK`) never fire webhooks — the result is already in the response.
+
+### Events
+
+- `compression.completed` — fired after the queued job finishes successfully.
+- `compression.failed` — fired after all retries are exhausted.
+
+### Headers
+
+| Header | Description |
+| --- | --- |
+| `X-PDFCoreLab-Event` | Event name. |
+| `X-PDFCoreLab-Delivery` | ULID identifying this delivery. |
+| `X-PDFCoreLab-Signature` | `sha256=<hex>` HMAC-SHA256 of the raw body with your signing secret. |
+| `X-PDFCoreLab-Attempt` | Attempt number. Deliveries retry up to 5 times on non-2xx. |
+
+### Verifying the signature
+
+```php
+$expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret);
+if (! hash_equals($expected, $request->header('X-PDFCoreLab-Signature'))) {
+    abort(401);
+}
+```
+
+Return any 2xx status to acknowledge delivery. Non-2xx responses (and timeouts) are retried with exponential backoff.
 
 ## Contributing
 

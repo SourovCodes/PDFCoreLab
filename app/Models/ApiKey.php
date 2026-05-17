@@ -18,6 +18,8 @@ class ApiKey extends Model
         'key_hash',
         'is_active',
         'last_used_at',
+        'webhook_url',
+        'webhook_secret',
     ];
 
     public function scopeActive(Builder $query): Builder
@@ -35,11 +37,22 @@ class ApiKey extends Model
         return $this->hasMany(PdfCompression::class);
     }
 
+    public function webhookDeliveries(): HasMany
+    {
+        return $this->hasMany(WebhookDelivery::class);
+    }
+
+    public function hasWebhook(): bool
+    {
+        return ! empty($this->webhook_url) && ! empty($this->webhook_secret);
+    }
+
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
             'last_used_at' => 'datetime',
+            'webhook_secret' => 'encrypted',
         ];
     }
 }
