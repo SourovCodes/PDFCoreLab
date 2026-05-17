@@ -50,6 +50,7 @@ class ApiKey extends Model
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'is_active' => 'boolean',
             'last_used_at' => 'datetime',
             'webhook_secret' => 'encrypted',
